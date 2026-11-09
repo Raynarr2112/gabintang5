@@ -143,7 +143,7 @@ export default function ProofViewerModal({ isOpen, onClose, order, onVerifyPaid 
           {order.customerPhone && (
             <a
               href={`https://wa.me/${normalizeWhatsAppNumber(order.customerPhone)}?text=${encodeURIComponent(
-                `Halo Kak *${order.customerName}*, terima kasih telah memesan ScoopMatch (${order.orderId}). Kami sudah menerima konfirmasi pembayaranmu!`
+                `Halo Kak ${order.customerName}, terima kasih telah memesan di GABINTANG5 (${order.orderId}). Kami sudah menerima konfirmasi pembayaran Kakak yaa!`
               )}`}
               target="_blank"
               rel="noopener noreferrer"

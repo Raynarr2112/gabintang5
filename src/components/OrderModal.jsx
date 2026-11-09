@@ -470,7 +470,7 @@ export default function OrderModal() {
                     <div className="pt-1">
                       <a
                         href={`https://wa.me/${adminPhone.replace(/^0/, '62')}?text=${encodeURIComponent(
-                          `Halooo Kak Admin GABINTANG5 yang manis! 🥪🍦✨\n\nAku mau konfirmasi Pre-Order (PO) atas nama ${customerName || 'Pembeli'} sebesar ${formatRupiah(grandTotal)} untuk penerimaan ${activeSession?.name || 'Senin / Selasa'}. Mohon dicek yaa Kak, makasih banyak 🥰💖`
+                          `Halooo Kak Admin GABINTANG5 yang manis!\n\nAku mau konfirmasi Pre-Order (PO) atas nama ${customerName || 'Pembeli'} sebesar ${formatRupiah(grandTotal)} untuk penerimaan ${activeSession?.name || 'Senin / Selasa'}. Mohon dicek yaa Kak, makasih banyak!`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"

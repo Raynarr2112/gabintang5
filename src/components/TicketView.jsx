@@ -91,6 +91,12 @@ export default function TicketView() {
       return top ? `${top.icon} ${top.name}` : null;
     })
     .filter(Boolean);
+  const toppingNamesPlain = (ticket.toppings || [])
+    .map(topId => {
+      const top = TOPPINGS.find(t => t.id === topId);
+      return top ? top.name : null;
+    })
+    .filter(Boolean);
 
   const isReady = ticket.status === 'selesai';
   const isProcessing = ticket.status === 'diproses';
@@ -279,7 +285,7 @@ export default function TicketView() {
                   {/* Kirim Konfirmasi Pesanan Tunai ke WhatsApp Admin Button */}
                   <a
                     href={`https://wa.me/${normalizeWhatsAppNumber(qrisConfig?.adminWhatsapp || '081223997778')}?text=${encodeURIComponent(
-                      `Halooo Kak Admin GABINTANG5 yang manis! 🥪🍦✨\n\nAku baru aja pesan Gabin Es Krim nomor antrean ${ticket.orderId} atas nama ${ticket.customerName} (${ ticket.flavor?.name || 'Gabin' }${toppingNames.length > 0 ? ` + Topping: ${toppingNames.join(', ')}` : ''}) dengan total ${formatRupiah(ticket.totalPrice)}${ticket.orderType === 'po' ? ` (Sesi: ${ticket.poSessionName || 'PO'})` : ''}.\n\nPembayarannya TUNAI di kasir yaa Kak! Mohon disiapkan, makasih banyak yaa 🥰💖`
+                      `Halooo Kak Admin GABINTANG5 yang manis!\n\nAku baru aja pesan Gabin Es Krim nomor antrean ${ticket.orderId} atas nama ${ticket.customerName} (${ ticket.flavor?.name || 'Gabin' }${toppingNamesPlain.length > 0 ? ` + Topping: ${toppingNamesPlain.join(', ')}` : ''}) dengan total ${formatRupiah(ticket.totalPrice)}${ticket.orderType === 'po' ? ` (Sesi: ${ticket.poSessionName || 'PO'})` : ''}.\n\nPembayarannya TUNAI di kasir yaa Kak! Mohon disiapkan, makasih banyak yaa!`
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -355,7 +361,7 @@ export default function TicketView() {
                       {/* Kirim Bukti ke WhatsApp Admin Button */}
                       <a
                         href={`https://wa.me/${normalizeWhatsAppNumber(qrisConfig?.adminWhatsapp || '081223997778')}?text=${encodeURIComponent(
-                          `Halooo Kak Admin GABINTANG5 yang manis! 🥪🍦✨\n\nAku udah bayar via QRIS nih buat pesanan ${ticket.orderId} atas nama ${ticket.customerName} sebesar ${formatRupiah(ticket.totalPrice)}${ticket.orderType === 'po' ? ` (Sesi: ${ticket.poSessionName || 'PO'})` : ''}.\n\nTolong dicek ya Kak, udah nggak sabar pengen nyobain gabin es krimnya yang renyah dan lumer! Makasih banyak yaa 🥰💖`
+                          `Halooo Kak Admin GABINTANG5 yang manis!\n\nAku udah bayar via QRIS nih buat pesanan ${ticket.orderId} atas nama ${ticket.customerName} sebesar ${formatRupiah(ticket.totalPrice)}${ticket.orderType === 'po' ? ` (Sesi: ${ticket.poSessionName || 'PO'})` : ''}.\n\nTolong dicek ya Kak, udah nggak sabar pengen nyobain gabin es krimnya yang renyah dan lumer! Makasih banyak yaa!`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -405,7 +411,7 @@ export default function TicketView() {
                       {/* Tombol langsung chat WA Admin meskipun belum upload bukti */}
                       <a
                         href={`https://wa.me/${normalizeWhatsAppNumber(qrisConfig?.adminWhatsapp || '081223997778')}?text=${encodeURIComponent(
-                          `Halooo Kak Admin GABINTANG5 yang manis! 🥪🍦✨\n\nAku udah pesan via QRIS nih buat pesanan ${ticket.orderId} atas nama ${ticket.customerName} (${ticket.flavor?.name || 'Gabin'}${toppingNames.length > 0 ? ` + Topping: ${toppingNames.join(', ')}` : ''}) sebesar ${formatRupiah(ticket.totalPrice)}${ticket.orderType === 'po' ? ` (Sesi: ${ticket.poSessionName || 'PO'})` : ''}.\n\nBukti transfernya aku kirim di chat ini yaa Kak! Makasih banyak 🥰💖`
+                          `Halooo Kak Admin GABINTANG5 yang manis!\n\nAku udah pesan via QRIS nih buat pesanan ${ticket.orderId} atas nama ${ticket.customerName} (${ticket.flavor?.name || 'Gabin'}${toppingNamesPlain.length > 0 ? ` + Topping: ${toppingNamesPlain.join(', ')}` : ''}) sebesar ${formatRupiah(ticket.totalPrice)}${ticket.orderType === 'po' ? ` (Sesi: ${ticket.poSessionName || 'PO'})` : ''}.\n\nBukti transfernya aku kirim di chat ini yaa Kak! Makasih banyak!`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"

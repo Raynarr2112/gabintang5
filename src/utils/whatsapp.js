@@ -50,28 +50,28 @@ export function createOrderReadyWhatsAppUrl(order) {
   const toppingsFormatted = (order.toppings || [])
     .map(tid => {
       const t = TOPPINGS.find(item => item.id === tid);
-      return t ? `${t.icon} ${t.name}` : tid;
+      return t ? t.name : tid;
     })
     .join(', ');
 
   const poScheduleLine = order.orderType === 'po' && order.poSessionName
-    ? `• Hari Penerimaan PO: ${order.poSessionName}\n`
+    ? `- Hari Penerimaan PO: ${order.poSessionName}\n`
     : '';
 
   const message =
-`Halooo Kak ${order.customerName || 'Pelanggan'} yang manis! 🎉🥪🍦
+`Halooo Kak ${order.customerName || 'Pelanggan'} yang manis!
 
-Yuhuuu~ Gabin Es Krim pesanan Kakak di GABINTANG5 udah SELESAI diracik dan SIAP DIAMBIL nih! ✨
+Yuhuuu~ Gabin Es Krim pesanan Kakak di GABINTANG5 udah SELESAI diracik dan SIAP DIAMBIL nih!
 
-📋 Detail Pesanan Kakak:
-• No. Antrean: ${order.orderId}
-• Menu: ${flavorText}
-• Pilihan: ${sizeObj?.name || order.size} (${servingObj?.name || order.serving})
-${toppingsFormatted ? `• Topping: ${toppingsFormatted}\n` : ''}${poScheduleLine}• Total: ${formatRupiah(order.totalPrice || 0)}
+Detail Pesanan Kakak:
+- No. Antrean: ${order.orderId}
+- Menu: ${flavorText}
+- Pilihan: ${sizeObj?.name || order.size} (${servingObj?.name || order.serving})
+${toppingsFormatted ? `- Topping: ${toppingsFormatted}\n` : ''}${poScheduleLine}- Total: ${formatRupiah(order.totalPrice || 0)}
 
-Yuk langsung mampir ke meja booth kami dan tunjukin chat ini sebelum es krimnya kangen berat (alias meleleh hehe)! 🏃💨
+Yuk langsung mampir ke meja booth kami dan tunjukin chat ini sebelum es krimnya kangen berat (alias meleleh hehe)!
 
-Selamat menikmati sensasi renyah dingin yang bikin nagih yaa! 🥰💖`;
+Selamat menikmati sensasi renyah dingin yang bikin nagih yaa!`;
 
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
@@ -85,11 +85,11 @@ export function createCustomerShareTicketUrl(order) {
     : '';
 
   const message =
-`Yuhuuu! Ini kupon antrean Gabin Es Krim aku di GABINTANG5 🥪🍦✨
+`Yuhuuu! Ini kupon antrean Gabin Es Krim aku di GABINTANG5
 
-• No. Antrean: ${order.orderId}
-• Nama: ${order.customerName}
-• Status: ${order.status === 'selesai' ? 'Siap Diambil 🎉' : order.status === 'diproses' ? 'Lagi Dibuat Barista 🧑‍🍳' : 'Menunggu di Kasir ⏳'}
+- No. Antrean: ${order.orderId}
+- Nama: ${order.customerName}
+- Status: ${order.status === 'selesai' ? 'Siap Diambil' : order.status === 'diproses' ? 'Sedang Disiapkan Barista' : 'Menunggu di Kasir'}
 
 Cek status antrean secara live di sini yaa:
 ${trackingUrl}`;
