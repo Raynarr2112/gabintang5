@@ -172,7 +172,14 @@ function doPost(e) {
     var lastRow = sheet.getLastRow();
     var existingRow = findRowByOrderCode(sheet, lastRow, colMap.orderCode, data.order_code);
 
-    // 6A. Jika aksi adalah hapus pesanan (delete_order)
+    // 6A. Jika aksi adalah hapus pesanan (delete_order) atau bersihkan semua (clear_all)
+    if (data.action === "clear_all") {
+      if (lastRow > 1) {
+        sheet.deleteRows(2, lastRow - 1);
+      }
+      return jsonResponse({ status: "success", action: "cleared_all" });
+    }
+
     if (data.action === "delete_order") {
       if (existingRow > 0) {
         sheet.deleteRow(existingRow);

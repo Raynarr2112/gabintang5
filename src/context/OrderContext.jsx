@@ -24,8 +24,36 @@ import { getPoSettings, savePoSettings, calculateSlotRemainingQuota } from '../u
 const OrderContext = createContext();
 
 const STORAGE_KEY = 'scoopmatch_order_queue_v5';
+const DELETED_IDS_KEY = 'scoopmatch_deleted_order_ids_v1';
 const SOLD_OUT_FLAVORS_KEY = 'scoopmatch_sold_out_flavors_v2';
 const SOLD_OUT_TOPPINGS_KEY = 'scoopmatch_sold_out_toppings_v2';
+
+function getDeletedOrderIds() {
+  try {
+    const saved = localStorage.getItem(DELETED_IDS_KEY);
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function addDeletedOrderIds(ids) {
+  try {
+    const current = getDeletedOrderIds();
+    ids.forEach(id => current.add(id));
+    localStorage.setItem(DELETED_IDS_KEY, JSON.stringify([...current]));
+  } catch {}
+}
+
+function removeDeletedOrderId(id) {
+  try {
+    const current = getDeletedOrderIds();
+    if (current.has(id)) {
+      current.delete(id);
+      localStorage.setItem(DELETED_IDS_KEY, JSON.stringify([...current]));
+    }
+  } catch {}
+}
 
 // Clean empty initial orders (no demo/dummy data by default)
 const INITIAL_DEMO_ORDERS = [];
@@ -293,10 +321,14 @@ export function OrderProvider({ children }) {
       if (!isMounted || !sheetOrders) return;
 
       setOrderQueue(prev => {
+        const deletedSet = getDeletedOrderIds();
         const prevMap = new Map(prev.map(o => [o.orderId, o]));
         let hasNewOrder = false;
 
-        const merged = sheetOrders.map(row => {
+        // Filter out any orders that were deleted locally in Admin
+        const validSheetRows = sheetOrders.filter(row => !deletedSet.has(row.order_code));
+
+        const merged = validSheetRows.map(row => {
           const existing = prevMap.get(row.order_code);
           if (!existing) {
             hasNewOrder = true;
@@ -422,6 +454,9 @@ export function OrderProvider({ children }) {
       status: 'pending', // 'pending' | 'diproses' | 'selesai'
     };
 
+    // Clear from deleted tombstones if orderId is reused
+    removeDeletedOrderId(newOrder.orderId);
+
     // 1. Push to Supabase Cloud Database (if configured)
     insertOrderToSupabase(newOrder);
 
@@ -491,6 +526,8 @@ export function OrderProvider({ children }) {
   };
 
   const deleteOrder = (orderId) => {
+    addDeletedOrderIds([orderId]);
+
     // Delete in Supabase
     deleteOrderFromSupabase(orderId);
 
@@ -506,6 +543,15 @@ export function OrderProvider({ children }) {
   };
 
   const clearQueue = () => {
+    // Record all current orderIds as deleted so background Google Sheets sync won't resurrect them
+    const currentIds = orderQueue.map(o => o.orderId);
+    addDeletedOrderIds(currentIds);
+
+    // Also request deletion from Google Sheets for each order
+    currentIds.forEach(id => {
+      deleteOrderInGoogleSheets(id);
+    });
+
     setOrderQueue([]);
   };
 
