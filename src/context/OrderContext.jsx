@@ -23,8 +23,8 @@ import { getPoSettings, savePoSettings, calculateSlotRemainingQuota } from '../u
 
 const OrderContext = createContext();
 
-const STORAGE_KEY = 'scoopmatch_order_queue_v5';
-const DELETED_IDS_KEY = 'scoopmatch_deleted_order_ids_v1';
+const STORAGE_KEY = 'scoopmatch_order_queue_v6';
+const DELETED_IDS_KEY = 'scoopmatch_deleted_order_ids_v2';
 const SOLD_OUT_FLAVORS_KEY = 'scoopmatch_sold_out_flavors_v2';
 const SOLD_OUT_TOPPINGS_KEY = 'scoopmatch_sold_out_toppings_v2';
 
@@ -54,6 +54,8 @@ function removeDeletedOrderId(id) {
     }
   } catch {}
 }
+
+let lastClearedTimestamp = 0;
 
 // Clean empty initial orders (no demo/dummy data by default)
 const INITIAL_DEMO_ORDERS = [];
@@ -242,7 +244,9 @@ export function OrderProvider({ children }) {
     const handleStorageChange = (e) => {
       if (e.key === STORAGE_KEY) {
         try {
-          const updatedOrders = e.newValue ? JSON.parse(e.newValue) : [];
+          const deletedSet = getDeletedOrderIds();
+          const rawOrders = e.newValue ? JSON.parse(e.newValue) : [];
+          const updatedOrders = rawOrders.filter(o => !deletedSet.has(o.orderId));
           setOrderQueue(prev => {
             // Play chime if a new order was added from another tab
             if (updatedOrders.length > prev.length) {
@@ -276,7 +280,11 @@ export function OrderProvider({ children }) {
     // 1. Fetch initial orders from cloud
     fetchOrdersFromSupabase().then(rows => {
       if (rows && rows.length > 0) {
-        setOrderQueue(rows.map(mapDatabaseRowToOrder));
+        const deletedSet = getDeletedOrderIds();
+        const filteredRows = rows
+          .filter(r => !deletedSet.has(r.order_code))
+          .map(mapDatabaseRowToOrder);
+        setOrderQueue(filteredRows);
       }
     });
 
@@ -307,26 +315,36 @@ export function OrderProvider({ children }) {
     };
   }, []);
 
-  // Two-Way Auto-Sync with Google Sheets (works without Supabase across different devices!)
+  // Two-Way Auto-Sync with Google Sheets (works across all devices even if Supabase is present)
   useEffect(() => {
-    if (isSupabaseConfigured()) return;
-
     let isMounted = true;
 
     const syncFromSheets = async () => {
+      // Skip polling for 10 seconds right after user clicked "Bersihkan Semua"
+      if (Date.now() - lastClearedTimestamp < 10000) return;
+
       const webhookUrl = getGoogleSheetsWebhookUrl();
       if (!webhookUrl) return;
 
       const sheetOrders = await fetchOrdersFromGoogleSheets();
       if (!isMounted || !sheetOrders) return;
 
+      // Re-check after async fetch finishes
+      if (Date.now() - lastClearedTimestamp < 10000) return;
+
       setOrderQueue(prev => {
         const deletedSet = getDeletedOrderIds();
         const prevMap = new Map(prev.map(o => [o.orderId, o]));
         let hasNewOrder = false;
 
-        // Filter out any orders that were deleted locally in Admin
-        const validSheetRows = sheetOrders.filter(row => !deletedSet.has(row.order_code));
+        // Filter out any orders that were deleted locally in Admin and deduplicate by order_code
+        const seenCodes = new Set();
+        const validSheetRows = sheetOrders.filter(row => {
+          const code = (row.order_code || '').trim();
+          if (!code || deletedSet.has(code) || seenCodes.has(code)) return false;
+          seenCodes.add(code);
+          return true;
+        });
 
         const merged = validSheetRows.map(row => {
           const existing = prevMap.get(row.order_code);
@@ -543,12 +561,15 @@ export function OrderProvider({ children }) {
   };
 
   const clearQueue = () => {
-    // Record all current orderIds as deleted so background Google Sheets sync won't resurrect them
+    lastClearedTimestamp = Date.now();
+
+    // Record all current orderIds as deleted so background sync won't resurrect them
     const currentIds = orderQueue.map(o => o.orderId);
     addDeletedOrderIds(currentIds);
 
-    // Also request deletion from Google Sheets for each order
+    // Delete in Supabase & Google Sheets for each order
     currentIds.forEach(id => {
+      deleteOrderFromSupabase(id);
       deleteOrderInGoogleSheets(id);
     });
 
