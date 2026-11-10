@@ -5,6 +5,8 @@ const SHEETS_CONFIG_KEY = 'scoopmatch_sheets_webhook_url';
 const DEFAULT_SHEETS_WEBHOOK_URL =
   'https://script.google.com/macros/s/AKfycbzLV2CJxTOTA-os1QfUHOWvd4loczkliL7QmqHh9HQbHeOJagnis1GUVsIao6u5qhgI0w/exec';
 
+export const SYSTEM_CONFIG_ORDER_CODE = '__SYSTEM_CONFIG__';
+
 export function getGoogleSheetsWebhookUrl() {
   const envUrl = import.meta.env.VITE_GOOGLE_SHEET_WEBHOOK_URL;
   if (envUrl && /^https?:\/\//i.test(envUrl.trim())) return envUrl.trim();
@@ -177,6 +179,63 @@ export async function fetchOrdersFromGoogleSheets() {
     return null;
   } catch {
     return null;
+  }
+}
+
+// 1e. Sync Global Store Config (Booth Open/Close, PO Open/Close, Sold Out items) to Google Sheets
+// Works with existing Google Apps Script deployment without requiring script re-deploy!
+export async function syncStoreConfigToGoogleSheets(configObj) {
+  const webhookUrl = getGoogleSheetsWebhookUrl();
+  if (!webhookUrl) return false;
+
+  const encodedNotes = JSON.stringify({
+    isBoothActive: configObj.isBoothActive !== false,
+    isPoActive: configObj.isPoActive !== false,
+    soldOutFlavors: configObj.soldOutFlavors || [],
+    soldOutToppings: configObj.soldOutToppings || [],
+    updatedAt: Date.now(),
+  });
+
+  try {
+    // Delete previous config row first so only 1 clean row exists, then insert updated config row
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'delete_order',
+        order_code: SYSTEM_CONFIG_ORDER_CODE,
+      }),
+      mode: 'no-cors',
+    });
+
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        order_code: SYSTEM_CONFIG_ORDER_CODE,
+        customer_name: 'PENGATURAN SISTEM (JANGAN DIHAPUS)',
+        customer_phone: '-',
+        order_type: 'po',
+        po_session_name: configObj.isBoothActive !== false ? 'BOOTH_BUKA' : 'BOOTH_TUTUP',
+        po_time_range: configObj.isPoActive !== false ? 'PO_BUKA' : 'PO_TUTUP',
+        payment_method: 'SYSTEM',
+        payment_status: 'paid',
+        has_proof: '-',
+        notes: encodedNotes,
+        flavor_name: '-',
+        serving: '-',
+        size: '-',
+        toppings: '-',
+        total_price: 0,
+        status: 'selesai',
+        timestamp: new Date().toISOString(),
+      }),
+      mode: 'no-cors',
+    });
+    return true;
+  } catch (err) {
+    console.error('Failed to sync store config to Google Sheets:', err);
+    return false;
   }
 }
 

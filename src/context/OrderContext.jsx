@@ -17,6 +17,8 @@ import {
   deleteOrderInGoogleSheets,
   fetchOrdersFromGoogleSheets,
   getGoogleSheetsWebhookUrl,
+  syncStoreConfigToGoogleSheets,
+  SYSTEM_CONFIG_ORDER_CODE,
 } from '../services/orderSync';
 import { playOrderChime } from '../utils/audioAlert';
 import { getPoSettings, savePoSettings, calculateSlotRemainingQuota } from '../utils/poSettings';
@@ -57,6 +59,7 @@ function removeDeletedOrderId(id) {
 }
 
 let lastClearedTimestamp = 0;
+let lastLocalConfigUpdateTimestamp = 0;
 
 // Clean empty initial orders (no demo/dummy data by default)
 const INITIAL_DEMO_ORDERS = [];
@@ -181,12 +184,23 @@ export function OrderProvider({ children }) {
   }, [soldOutToppings]);
 
   const toggleFlavorSoldOut = (flavorId) => {
-    setSoldOutFlavors(prev =>
-      prev.includes(flavorId) ? prev.filter(id => id !== flavorId) : [...prev, flavorId]
-    );
+    lastLocalConfigUpdateTimestamp = Date.now();
+    setSoldOutFlavors(prev => {
+      const next = prev.includes(flavorId)
+        ? prev.filter(id => id !== flavorId)
+        : [...prev, flavorId];
+      syncStoreConfigToGoogleSheets({
+        isBoothActive: poSettings?.isBoothActive !== false,
+        isPoActive: poSettings?.isPoActive !== false,
+        soldOutFlavors: next,
+        soldOutToppings,
+      });
+      return next;
+    });
   };
 
   const toggleToppingSoldOut = (toppingId) => {
+    lastLocalConfigUpdateTimestamp = Date.now();
     setSoldOutToppings(prev => {
       const next = prev.includes(toppingId)
         ? prev.filter(id => id !== toppingId)
@@ -196,6 +210,12 @@ export function OrderProvider({ children }) {
         ...c,
         toppings: c.toppings.filter(t => !next.includes(t)),
       }));
+      syncStoreConfigToGoogleSheets({
+        isBoothActive: poSettings?.isBoothActive !== false,
+        isPoActive: poSettings?.isPoActive !== false,
+        soldOutFlavors,
+        soldOutToppings: next,
+      });
       return next;
     });
   };
@@ -219,8 +239,15 @@ export function OrderProvider({ children }) {
   const [poSettings, setPoSettings] = useState(() => getPoSettings());
 
   const updatePoSettings = (newSettings) => {
+    lastLocalConfigUpdateTimestamp = Date.now();
     setPoSettings(newSettings);
     savePoSettings(newSettings);
+    syncStoreConfigToGoogleSheets({
+      isBoothActive: newSettings.isBoothActive !== false,
+      isPoActive: newSettings.isPoActive !== false,
+      soldOutFlavors,
+      soldOutToppings,
+    });
   };
 
   // Barista Order Queue with LocalStorage & Cloud persistence
@@ -342,16 +369,69 @@ export function OrderProvider({ children }) {
       // Re-check after async fetch finishes
       if (Date.now() - lastClearedTimestamp < 10000) return;
 
+      // Extract & apply global store config row (__SYSTEM_CONFIG__) if present and not overridden locally within the last 8s
+      const configRow = sheetOrders.find(
+        r => (r.order_code || '').trim() === SYSTEM_CONFIG_ORDER_CODE
+      );
+      if (configRow && Date.now() - lastLocalConfigUpdateTimestamp > 8000) {
+        try {
+          const parsedConfig = configRow.notes ? JSON.parse(configRow.notes) : null;
+          if (parsedConfig && typeof parsedConfig === 'object') {
+            setPoSettings(prevPo => {
+              const nextBooth = parsedConfig.isBoothActive !== false;
+              const nextPo = parsedConfig.isPoActive !== false;
+              if (
+                (prevPo.isBoothActive !== false) === nextBooth &&
+                (prevPo.isPoActive !== false) === nextPo
+              ) {
+                return prevPo;
+              }
+              const updatedPo = {
+                ...prevPo,
+                isBoothActive: nextBooth,
+                isPoActive: nextPo,
+              };
+              savePoSettings(updatedPo);
+              return updatedPo;
+            });
+
+            if (Array.isArray(parsedConfig.soldOutFlavors)) {
+              setSoldOutFlavors(prev =>
+                JSON.stringify(prev) === JSON.stringify(parsedConfig.soldOutFlavors)
+                  ? prev
+                  : parsedConfig.soldOutFlavors
+              );
+            }
+            if (Array.isArray(parsedConfig.soldOutToppings)) {
+              setSoldOutToppings(prev =>
+                JSON.stringify(prev) === JSON.stringify(parsedConfig.soldOutToppings)
+                  ? prev
+                  : parsedConfig.soldOutToppings
+              );
+            }
+          }
+        } catch {
+          // ignore malformed config JSON
+        }
+      }
+
       setOrderQueue(prev => {
         const deletedSet = getDeletedOrderIds();
         const prevMap = new Map(prev.map(o => [o.orderId, o]));
         let hasNewOrder = false;
 
-        // Filter out any orders that were deleted locally in Admin and deduplicate by order_code
+        // Filter out any orders that were deleted locally in Admin, system config rows, and deduplicate by order_code
         const seenCodes = new Set();
         const validSheetRows = sheetOrders.filter(row => {
           const code = (row.order_code || '').trim();
-          if (!code || deletedSet.has(code) || seenCodes.has(code)) return false;
+          if (
+            !code ||
+            code === SYSTEM_CONFIG_ORDER_CODE ||
+            deletedSet.has(code) ||
+            seenCodes.has(code)
+          ) {
+            return false;
+          }
           seenCodes.add(code);
           return true;
         });
