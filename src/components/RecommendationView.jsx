@@ -328,7 +328,7 @@ export default function RecommendationView() {
             }`}
           >
             <ShoppingBag className="w-4 h-4" />
-            <span>{isRecommendedSoldOut ? 'Stok Habis' : 'Lanjut Pre-Order'}</span>
+            <span>{isRecommendedSoldOut ? 'Stok Habis' : 'Lanjut Pesan Sekarang'}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>

@@ -3,6 +3,7 @@ const LEGACY_PO_SETTINGS_KEY = 'scoopmatch_po_settings_v1';
 
 export const DEFAULT_PO_SETTINGS = {
   isPoActive: true,
+  isBoothActive: true,
   eventName: 'Open PO Rabu - Jumat',
   eventDate: 'Produksi Sabtu • Pengantaran Senin / Selasa',
   location: 'GABINTANG5 - Gabin Ice Cream',

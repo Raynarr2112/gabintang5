@@ -69,14 +69,25 @@ function doGet(e) {
       var rawPhone = colMap.phone ? (row[colMap.phone - 1] || "").toString().replace(/^'/, "").trim() : "";
       if (rawPhone === "-") rawPhone = "";
 
+      var rawOrderType = colMap.orderType ? (row[colMap.orderType - 1] || "").toString().toLowerCase() : "";
       var rawPoSession = colMap.poSession ? (row[colMap.poSession - 1] || "").toString().trim() : "";
-      var poSessionName = "Hari Senin";
-      var poSessionId = "hari-senin";
-      if (rawPoSession.toLowerCase().indexOf("selasa") !== -1) {
-        poSessionName = "Hari Selasa";
-        poSessionId = "hari-selasa";
-      } else if (rawPoSession && rawPoSession !== "-") {
-        poSessionName = rawPoSession.split("(")[0].trim();
+      var isRegularOrder =
+        rawOrderType.indexOf("booth") !== -1 ||
+        rawOrderType.indexOf("reguler") !== -1 ||
+        rawOrderType.indexOf("langsung") !== -1 ||
+        rawPoSession === "-" ||
+        rawPoSession === "";
+
+      var orderType = isRegularOrder ? "regular" : "po";
+      var poSessionName = isRegularOrder ? "" : "Hari Senin";
+      var poSessionId = isRegularOrder ? null : "hari-senin";
+      if (!isRegularOrder) {
+        if (rawPoSession.toLowerCase().indexOf("selasa") !== -1) {
+          poSessionName = "Hari Selasa";
+          poSessionId = "hari-selasa";
+        } else if (rawPoSession && rawPoSession !== "-") {
+          poSessionName = rawPoSession.split("(")[0].trim();
+        }
       }
 
       var rawPayStatus = colMap.paymentStatus ? (row[colMap.paymentStatus - 1] || "").toString().toLowerCase() : "";
@@ -97,7 +108,7 @@ function doGet(e) {
         order_code: orderCode,
         customer_name: colMap.name ? (row[colMap.name - 1] || "Pelanggan").toString() : "Pelanggan",
         customer_phone: rawPhone,
-        order_type: "po",
+        order_type: orderType,
         po_session_id: poSessionId,
         po_session_name: poSessionName,
         flavor_name: colMap.flavor ? (row[colMap.flavor - 1] || "Coklat").toString() : "Coklat",

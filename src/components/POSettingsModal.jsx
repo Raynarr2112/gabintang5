@@ -23,6 +23,11 @@ export default function POSettingsModal({ isOpen, onClose }) {
     setForm(prev => ({ ...prev, isPoActive: !prev.isPoActive }));
   };
 
+  const handleToggleBooth = () => {
+    playCutePopSound();
+    setForm(prev => ({ ...prev, isBoothActive: !(prev.isBoothActive !== false) }));
+  };
+
   const handleSessionChange = (index, field, value) => {
     setForm(prev => {
       const updated = [...prev.sessions];
@@ -84,6 +89,33 @@ export default function POSettingsModal({ isOpen, onClose }) {
 
         {/* Form Body */}
         <form onSubmit={handleSave} className="p-5 overflow-y-auto space-y-4 no-scrollbar">
+          {/* Booth Direct Order Switch */}
+          <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-300 flex items-center justify-between">
+            <div>
+              <p className="font-fredoka font-bold text-sm text-icechoco-900">
+                Status Beli Langsung di Booth
+              </p>
+              <p className="text-xs text-icechoco-600">
+                {form.isBoothActive !== false
+                  ? 'Buka — pengunjung di booth bisa pesan & ambil langsung di kasir'
+                  : 'Tutup — pilihan Beli Langsung dikunci (Hanya terima PO)'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleBooth}
+              className={`w-14 h-8 rounded-full transition-colors relative p-1 shrink-0 ${
+                form.isBoothActive !== false ? 'bg-emerald-500' : 'bg-stone-300'
+              }`}
+            >
+              <div
+                className={`w-6 h-6 rounded-full bg-white shadow-md transform transition-transform ${
+                  form.isBoothActive !== false ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
           {/* Active Switch */}
           <div className="p-3.5 rounded-2xl bg-cream-100/70 border border-cream-300 flex items-center justify-between">
             <div>

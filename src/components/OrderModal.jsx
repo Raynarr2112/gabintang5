@@ -33,6 +33,10 @@ export default function OrderModal() {
     calculateSlotRemainingQuota,
   } = useOrder();
 
+  const isBoothOpen = poSettings?.isBoothActive !== false;
+  const isPoOpen = poSettings?.isPoActive !== false;
+
+  const [orderType, setOrderType] = useState(() => (isBoothOpen ? 'regular' : 'po'));
   const [selectedSessionId, setSelectedSessionId] = useState(
     () => poSettings?.sessions?.[0]?.id || 'hari-senin'
   );
@@ -51,8 +55,14 @@ export default function OrderModal() {
 
   if (!isOrderModalOpen) return null;
 
+  const effectiveOrderType =
+    orderType === 'regular' && !isBoothOpen
+      ? 'po'
+      : orderType === 'po' && !isPoOpen
+      ? 'regular'
+      : orderType;
+
   const sizeObj = SIZE_OPTIONS.find(s => s.id === customization.size) || SIZE_OPTIONS[0];
-  const servingObj = SERVING_OPTIONS.find(s => s.id === customization.serving) || SERVING_OPTIONS[0];
   const selectedToppingObjs = customization.toppings
     .map(topId => TOPPINGS.find(t => t.id === topId))
     .filter(Boolean);
@@ -85,15 +95,17 @@ export default function OrderModal() {
       return;
     }
 
-    const remaining = calculateSlotRemainingQuota(selectedSessionId, orderQueue, poSettings);
-    if (remaining <= 0) {
-      setError('Yah, kuota untuk hari ini sudah penuh! Silakan pilih hari lainnya.');
-      return;
-    }
+    if (effectiveOrderType === 'po') {
+      const remaining = calculateSlotRemainingQuota(selectedSessionId, orderQueue, poSettings);
+      if (remaining <= 0) {
+        setError('Yah, kuota untuk hari ini sudah penuh! Silakan pilih hari lainnya.');
+        return;
+      }
 
-    if (paymentMethod === 'qris' && !proofImage) {
-      setError('Wajib mengunggah foto / screenshot bukti transfer QRIS untuk mengunci pesanan PO kamu!');
-      return;
+      if (paymentMethod === 'qris' && !proofImage) {
+        setError('Wajib mengunggah foto / screenshot bukti transfer QRIS untuk mengunci pesanan PO kamu!');
+        return;
+      }
     }
 
     playSparkleSound();
@@ -104,10 +116,10 @@ export default function OrderModal() {
         customerPhone,
         paymentMethod,
         notes,
-        orderType: 'po',
-        poSessionId: activeSession?.id || 'hari-senin',
-        poSessionName: activeSession?.name || 'Hari Senin',
-        poTimeRange: activeSession?.timeRange || 'Pengambilan / Pengiriman Hari Senin',
+        orderType: effectiveOrderType,
+        poSessionId: effectiveOrderType === 'po' ? (activeSession?.id || 'hari-senin') : null,
+        poSessionName: effectiveOrderType === 'po' ? (activeSession?.name || 'Hari Senin') : '',
+        poTimeRange: effectiveOrderType === 'po' ? (activeSession?.timeRange || 'Pengambilan / Pengiriman Hari Senin') : '',
         proofImageUrl: paymentMethod === 'qris' ? proofImage : null,
       });
       setIsSubmitting(false);
@@ -124,10 +136,10 @@ export default function OrderModal() {
         <div className="p-4 sm:p-5 border-b border-stone-200 flex items-center justify-between bg-[#FAF6F0]">
           <div>
             <h3 className="font-fredoka text-lg sm:text-xl font-bold text-[#2C1810]">
-              Konfirmasi Pre-Order
+              Konfirmasi Pesanan
             </h3>
             <p className="text-xs text-stone-500">
-              Pilih hari penerimaan &amp; lengkapi detail pemesan
+              Pilih metode pengambilan &amp; lengkapi detail pemesan
             </p>
           </div>
           <button
@@ -186,65 +198,183 @@ export default function OrderModal() {
 
           {/* Customer Input Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Pre-Order Delivery/Pickup Day Picker (Senin / Selasa) */}
-            <div className="p-4 rounded-2xl bg-[#FAF6F0] border border-stone-200 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-fredoka font-bold text-xs text-[#2C1810]">
-                  Pilih Hari Penerimaan Pesanan:
+            {/* Hybrid Mode Selector: Beli Langsung di Booth vs Pre-Order (PO) */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-[#2C1810] flex items-center justify-between">
+                <span>Metode Pengambilan Pesanan:</span>
+                <span className="text-[10px] text-stone-500 font-normal">
+                  Ambil sekarang atau ikut jadwal PO
                 </span>
-                <span className="text-[10px] font-semibold text-stone-500">
-                  Produksi Hari Sabtu
-                </span>
-              </div>
+              </label>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {(poSettings?.sessions || []).map(session => {
-                  const remaining = calculateSlotRemainingQuota(session.id, orderQueue, poSettings);
-                  const isFull = remaining <= 0;
-                  const isSelected = selectedSessionId === session.id;
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* Option 1: Beli Langsung di Booth */}
+                <button
+                  type="button"
+                  disabled={!isBoothOpen}
+                  onClick={() => {
+                    playCutePopSound();
+                    setOrderType('regular');
+                    if (error) setError('');
+                  }}
+                  className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
+                    effectiveOrderType === 'regular'
+                      ? 'bg-[#2C1810] text-white border-[#2C1810] shadow-xs'
+                      : !isBoothOpen
+                      ? 'bg-stone-100 border-stone-200 opacity-60 cursor-not-allowed text-stone-500'
+                      : 'bg-white border-stone-300 hover:border-[#2C1810] text-[#2C1810]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <span className="font-fredoka font-bold text-xs flex items-center gap-1">
+                      <span>⚡</span>
+                      <span>Beli di Booth</span>
+                    </span>
+                    {!isBoothOpen ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-stone-200 text-stone-600">
+                        Tutup
+                      </span>
+                    ) : (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                        effectiveOrderType === 'regular'
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      }`}>
+                        Buka
+                      </span>
+                    )}
+                  </div>
+                  <p className={`text-[10px] leading-snug ${
+                    effectiveOrderType === 'regular' ? 'text-stone-300' : 'text-stone-500'
+                  }`}>
+                    {isBoothOpen
+                      ? 'Langsung dibuat & ambil sekarang di kasir'
+                      : 'Booth sedang tutup, silakan pilih Pre-Order'}
+                  </p>
+                </button>
 
-                  return (
-                    <button
-                      key={session.id}
-                      type="button"
-                      disabled={isFull}
-                      onClick={() => {
-                        playCutePopSound();
-                        setSelectedSessionId(session.id);
-                      }}
-                      className={`w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between active:scale-[0.99] ${
-                        isSelected
-                          ? 'bg-white border-[#2C1810] ring-1 ring-[#2C1810]'
-                          : isFull
-                          ? 'bg-stone-100 border-stone-200 opacity-60 cursor-not-allowed'
-                          : 'bg-white border-stone-200 hover:border-stone-400'
-                      }`}
-                    >
-                      <div>
-                        <span className="font-fredoka font-bold text-xs text-[#2C1810] block">
-                          {session.name}
-                        </span>
-                        <span className="text-[10px] text-stone-500 block mt-0.5">
-                          Siap diantar / diambil
-                        </span>
-                      </div>
-
-                      <div className="text-right shrink-0 ml-1">
-                        {isFull ? (
-                          <span className="text-[10px] font-bold text-stone-500 bg-stone-200 px-2 py-0.5 rounded-md">
-                            Penuh
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            Sisa {remaining}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
+                {/* Option 2: Pre-Order (PO) */}
+                <button
+                  type="button"
+                  disabled={!isPoOpen}
+                  onClick={() => {
+                    playCutePopSound();
+                    setOrderType('po');
+                    if (error) setError('');
+                  }}
+                  className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
+                    effectiveOrderType === 'po'
+                      ? 'bg-[#2C1810] text-white border-[#2C1810] shadow-xs'
+                      : !isPoOpen
+                      ? 'bg-stone-100 border-stone-200 opacity-60 cursor-not-allowed text-stone-500'
+                      : 'bg-white border-stone-300 hover:border-[#2C1810] text-[#2C1810]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <span className="font-fredoka font-bold text-xs flex items-center gap-1">
+                      <span>📅</span>
+                      <span>Pre-Order (PO)</span>
+                    </span>
+                    {!isPoOpen ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-stone-200 text-stone-600">
+                        Tutup
+                      </span>
+                    ) : (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                        effectiveOrderType === 'po'
+                          ? 'bg-[#C83E4D] text-white'
+                          : 'bg-rose-50 text-[#C83E4D] border border-rose-200'
+                      }`}>
+                        Senin/Selasa
+                      </span>
+                    )}
+                  </div>
+                  <p className={`text-[10px] leading-snug ${
+                    effectiveOrderType === 'po' ? 'text-stone-300' : 'text-stone-500'
+                  }`}>
+                    {isPoOpen
+                      ? 'Produksi Sabtu, siap Senin / Selasa'
+                      : 'Sesi Pre-Order sedang ditutup'}
+                  </p>
+                </button>
               </div>
             </div>
+
+            {/* Conditional Sub-Panel: Booth Live Info OR Pre-Order Day Picker */}
+            {effectiveOrderType === 'regular' ? (
+              <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="font-fredoka font-bold text-emerald-950 block">
+                    ⚡ Antrean Langsung di Booth
+                  </span>
+                  <span className="text-[11px] text-emerald-800">
+                    Pesananmu langsung masuk ke layar barista saat ini juga.
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white text-emerald-800 border border-emerald-200 shrink-0">
+                  Ambil Sekarang
+                </span>
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-[#FAF6F0] border border-stone-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-fredoka font-bold text-xs text-[#2C1810]">
+                    Pilih Hari Penerimaan PO:
+                  </span>
+                  <span className="text-[10px] font-semibold text-stone-500">
+                    Produksi Hari Sabtu
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {(poSettings?.sessions || []).map(session => {
+                    const remaining = calculateSlotRemainingQuota(session.id, orderQueue, poSettings);
+                    const isFull = remaining <= 0;
+                    const isSelected = selectedSessionId === session.id;
+
+                    return (
+                      <button
+                        key={session.id}
+                        type="button"
+                        disabled={isFull}
+                        onClick={() => {
+                          playCutePopSound();
+                          setSelectedSessionId(session.id);
+                        }}
+                        className={`w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between active:scale-[0.99] ${
+                          isSelected
+                            ? 'bg-white border-[#2C1810] ring-1 ring-[#2C1810]'
+                            : isFull
+                            ? 'bg-stone-100 border-stone-200 opacity-60 cursor-not-allowed'
+                            : 'bg-white border-stone-200 hover:border-stone-400'
+                        }`}
+                      >
+                        <div>
+                          <span className="font-fredoka font-bold text-xs text-[#2C1810] block">
+                            {session.name}
+                          </span>
+                          <span className="text-[10px] text-stone-500 block mt-0.5">
+                            Siap diantar / diambil
+                          </span>
+                        </div>
+
+                        <div className="text-right shrink-0 ml-1">
+                          {isFull ? (
+                            <span className="text-[10px] font-bold text-stone-500 bg-stone-200 px-2 py-0.5 rounded-md">
+                              Penuh
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              Sisa {remaining}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Customer Name Input */}
             <div className="space-y-1.5">
@@ -384,21 +514,27 @@ export default function OrderModal() {
                     </div>
 
                     <div className="max-w-[280px] mx-auto pt-1">
-                      <QRISDisplayCard amount={grandTotal} orderCode="PRE-ORDER" />
+                      <QRISDisplayCard
+                        amount={grandTotal}
+                        orderCode={effectiveOrderType === 'po' ? 'PRE-ORDER' : 'BOOTH'}
+                      />
                     </div>
                   </div>
 
-                  {/* Step 2: Upload Proof Screenshot (MANDATORY for QRIS PO) */}
+                  {/* Step 2: Upload Proof Screenshot (MANDATORY for QRIS PO, Optional/Recommended for Booth) */}
                   <div className="space-y-1.5 pt-2 border-t border-rose-200">
                     <div className="flex items-center justify-between">
                       <label className="font-fredoka font-bold text-xs text-rose-950 flex items-center gap-1.5">
                         <span className="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px] font-black">
                           2
                         </span>
-                        <span>Upload Screenshot Bukti Transfer <span className="text-rose-600">*</span></span>
+                        <span>
+                          Upload Screenshot Bukti Transfer{' '}
+                          {effectiveOrderType === 'po' && <span className="text-rose-600">*</span>}
+                        </span>
                       </label>
                       <span className="text-[10px] font-black text-rose-700 bg-rose-200/80 px-2 py-0.5 rounded-full">
-                        Wajib QRIS PO
+                        {effectiveOrderType === 'po' ? 'Wajib QRIS PO' : 'Opsional di Booth'}
                       </span>
                     </div>
 
@@ -470,14 +606,16 @@ export default function OrderModal() {
                     <div className="pt-1">
                       <a
                         href={`https://wa.me/${adminPhone.replace(/^0/, '62')}?text=${encodeURIComponent(
-                          `Halooo Kak Admin GABINTANG5 yang manis!\n\nAku mau konfirmasi Pre-Order (PO) atas nama ${customerName || 'Pembeli'} sebesar ${formatRupiah(grandTotal)} untuk penerimaan ${activeSession?.name || 'Senin / Selasa'}. Mohon dicek yaa Kak, makasih banyak!`
+                          effectiveOrderType === 'po'
+                            ? `Halooo Kak Admin GABINTANG5 yang manis!\n\nAku mau konfirmasi Pre-Order (PO) atas nama ${customerName || 'Pembeli'} sebesar ${formatRupiah(grandTotal)} untuk penerimaan ${activeSession?.name || 'Senin / Selasa'}. Mohon dicek yaa Kak, makasih banyak!`
+                            : `Halooo Kak Admin GABINTANG5 yang manis!\n\nAku mau konfirmasi pesanan Beli Langsung di Booth atas nama ${customerName || 'Pembeli'} sebesar ${formatRupiah(grandTotal)}. Mohon disiapkan yaa Kak, makasih banyak!`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="w-full py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors"
                       >
                         <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Kirim Konfirmasi PO via WhatsApp Admin</span>
+                        <span>Kirim Konfirmasi via WhatsApp Admin</span>
                       </a>
                     </div>
                   </div>
@@ -486,10 +624,16 @@ export default function OrderModal() {
                 <div className="p-3 rounded-2xl border text-xs space-y-0.5 mt-1.5 bg-amber-50/80 border-amber-200 text-amber-900">
                   <p className="font-bold flex items-center gap-1">
                     <span>💡</span>
-                    <span>Pembayaran Tunai (COD / Saat Terima)</span>
+                    <span>
+                      {effectiveOrderType === 'po'
+                        ? 'Pembayaran Tunai (COD / Saat Terima)'
+                        : 'Pembayaran Tunai Langsung di Kasir Booth'}
+                    </span>
                   </p>
                   <p className="text-[11px] opacity-90">
-                    Siapkan uang pas saat pesanan diberikan pada {activeSession?.name || 'Hari Senin / Selasa'}.
+                    {effectiveOrderType === 'po'
+                      ? `Siapkan uang pas saat pesanan diberikan pada ${activeSession?.name || 'Hari Senin / Selasa'}.`
+                      : `Tunjukkan E-Ticket ke kasir booth dan bayar ${formatRupiah(grandTotal)}.`}
                   </p>
                 </div>
               )}
@@ -510,14 +654,16 @@ export default function OrderModal() {
               className="w-full py-4 px-6 rounded-2xl bg-[#2C1810] hover:bg-[#3F2419] text-[#FAF6F0] font-fredoka font-semibold text-base active:scale-[0.99] transition-all flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
-                <span>Menyiapkan Tiket PO...</span>
+                <span>Menyiapkan E-Ticket Pesanan...</span>
               ) : (
                 <>
                   <CheckCircle2 className="w-5 h-5" />
                   <span>
-                    {paymentMethod === 'qris' && !proofImage
-                      ? `Upload Bukti & Pesan PO (${formatRupiah(grandTotal)})`
-                      : `Pesan PO ${activeSession?.name || ''} (${formatRupiah(grandTotal)})`}
+                    {effectiveOrderType === 'po'
+                      ? paymentMethod === 'qris' && !proofImage
+                        ? `Upload Bukti & Pesan PO (${formatRupiah(grandTotal)})`
+                        : `Pesan PO ${activeSession?.name || ''} (${formatRupiah(grandTotal)})`
+                      : `Pesan & Ambil di Booth (${formatRupiah(grandTotal)})`}
                   </span>
                 </>
               )}

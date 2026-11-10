@@ -112,7 +112,13 @@ export default function TicketView() {
           <span>{isReady ? 'Siap Diambil' : isProcessing ? 'Sedang Disiapkan' : 'Pesanan Tercatat'}</span>
         </div>
         <h1 className="font-fredoka text-2xl sm:text-3xl font-bold text-[#2C1810] leading-tight">
-          {isReady ? 'Pesanan Siap Diambil' : isProcessing ? 'Sedang Disiapkan' : 'E-Ticket Pre-Order'}
+          {isReady
+            ? 'Pesanan Siap Diambil'
+            : isProcessing
+            ? 'Sedang Disiapkan'
+            : ticket.orderType === 'po'
+            ? 'E-Ticket Pre-Order'
+            : 'E-Ticket Pesanan Booth'}
         </h1>
       </div>
 
@@ -128,7 +134,7 @@ export default function TicketView() {
         }`}>
           <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-widest opacity-80">
             <span>GABINTANG5</span>
-            <span>PRE-ORDER</span>
+            <span>{ticket.orderType === 'po' ? 'PRE-ORDER' : 'BELI DI BOOTH'}</span>
           </div>
 
           <div className="font-fredoka font-extrabold text-3xl sm:text-4xl tracking-wider py-0.5">

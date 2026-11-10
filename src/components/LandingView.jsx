@@ -33,30 +33,35 @@ export default function LandingView() {
             </p>
           </div>
 
-          {/* Clean Editorial Pre-Order Schedule Card */}
-          {poSettings?.isPoActive && (
-            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-300/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 max-w-xl mx-auto lg:mx-0">
-              <div className="flex items-start sm:items-center gap-3.5 text-left">
-                <div className="w-10 h-10 rounded-xl bg-[#FAF6F0] border border-stone-200 flex items-center justify-center text-[#2C1810] shrink-0">
-                  <Calendar className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-fredoka font-bold text-sm text-[#2C1810]">
-                      Jadwal Pre-Order Mingguan
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold px-2 py-0.5 rounded-full">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                      Open PO
-                    </span>
-                  </div>
-                  <p className="text-xs text-stone-600 mt-0.5">
-                    Pemesanan <strong className="text-stone-800">Rabu – Jumat</strong> &bull; Produksi <strong className="text-stone-800">Sabtu</strong> &bull; Pengantaran <strong className="text-stone-800">Senin / Selasa</strong>
-                  </p>
-                </div>
-              </div>
+          {/* Clean Editorial Booth & Pre-Order Status Card */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-300/80 space-y-3 max-w-xl mx-auto lg:mx-0">
+            <div className="flex flex-wrap items-center gap-2">
+              {poSettings?.isBoothActive !== false ? (
+                <span className="inline-flex items-center gap-1.5 text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold px-2.5 py-1 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                  <span>⚡ Beli Langsung di Booth: Buka</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-[11px] bg-stone-100 text-stone-600 border border-stone-200 font-bold px-2.5 py-1 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
+                  <span>Booth Tutup (Khusus PO)</span>
+                </span>
+              )}
+
+              {poSettings?.isPoActive !== false && (
+                <span className="inline-flex items-center gap-1.5 text-[11px] bg-rose-50 text-[#C83E4D] border border-rose-200 font-bold px-2.5 py-1 rounded-full">
+                  <Calendar className="w-3 h-3" />
+                  <span>Open Pre-Order (Senin / Selasa)</span>
+                </span>
+              )}
             </div>
-          )}
+
+            <p className="text-xs text-stone-600 text-left leading-relaxed">
+              {poSettings?.isBoothActive !== false
+                ? <>Bisa <strong className="text-stone-800">pesan &amp; ambil langsung di kasir Booth</strong> sekarang, atau ikut <strong className="text-stone-800">Pre-Order Mingguan</strong> (Produksi Sabtu &bull; Ready Senin / Selasa).</>
+                : <>Pemesanan Pre-Order <strong className="text-stone-800">Rabu – Jumat</strong> &bull; Produksi <strong className="text-stone-800">Sabtu</strong> &bull; Pengantaran <strong className="text-stone-800">Senin / Selasa</strong>.</>}
+            </p>
+          </div>
 
           {/* Primary CTA & Minimalist Steps */}
           <div className="pt-1 space-y-6 max-w-xl mx-auto lg:mx-0">
@@ -95,8 +100,8 @@ export default function LandingView() {
                 <span className="text-[11px] font-bold text-[#C83E4D] tracking-wider uppercase block">
                   Langkah 03
                 </span>
-                <p className="text-xs sm:text-sm font-bold text-[#2C1810] mt-0.5">Pilih Hari Terima</p>
-                <p className="text-[11px] text-stone-500">Siap diantar Senin atau Selasa</p>
+                <p className="text-xs sm:text-sm font-bold text-[#2C1810] mt-0.5">Ambil di Booth / PO</p>
+                <p className="text-[11px] text-stone-500">Bisa langsung ambil atau PO</p>
               </div>
             </div>
           </div>

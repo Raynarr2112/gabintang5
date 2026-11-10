@@ -41,10 +41,11 @@ export default function BaristaQueueView() {
     updateOrderStatus,
     updatePaymentStatus,
     deleteOrder,
-    resetToDemoOrders,
     clearQueue,
     soldOutFlavors = [],
     soldOutToppings = [],
+    poSettings,
+    updatePoSettings,
   } = useOrder();
 
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'pending' | 'diproses' | 'selesai'
@@ -59,6 +60,15 @@ export default function BaristaQueueView() {
   const [selectedProofOrder, setSelectedProofOrder] = useState(null);
   const [orderToDelete, setOrderToDelete] = useState(null);
   const [soundOn, setSoundOn] = useState(() => isSoundEnabled());
+
+  const isBoothOpen = poSettings?.isBoothActive !== false;
+
+  const handleToggleBoothQuick = () => {
+    updatePoSettings({
+      ...poSettings,
+      isBoothActive: !isBoothOpen,
+    });
+  };
 
   const handleToggleSound = () => {
     const next = !soundOn;
@@ -148,15 +158,30 @@ export default function BaristaQueueView() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-stone-200/80 relative z-20">
         <div className="space-y-0.5">
           <h1 className="font-fredoka text-2xl sm:text-3xl font-bold text-[#2C1810]">
-            Antrean Pre-Order
+            Antrean Booth &amp; Pre-Order
           </h1>
           <p className="text-xs sm:text-sm text-stone-600">
-            Kelola pesanan Senin &amp; Selasa, verifikasi pembayaran, dan unduh laporan Excel.
+            Kelola antrean beli langsung di booth, jadwal PO Senin &amp; Selasa, serta laporan Excel.
           </p>
         </div>
 
-        {/* Top Bar: Stock Management, Sound Alert & Cloud Sync */}
+        {/* Top Bar: Quick Booth Switch, Stock Management, Sound Alert & Cloud Sync */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Quick Booth Mode Switch (Ide A: Saklar Buka/Tutup Beli Langsung di Booth) */}
+          <button
+            type="button"
+            onClick={handleToggleBoothQuick}
+            className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all active:scale-95 cursor-pointer ${
+              isBoothOpen
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-900 hover:bg-emerald-100'
+                : 'bg-stone-100 border-stone-300 text-stone-600 hover:bg-stone-200'
+            }`}
+            title="Klik untuk Buka / Tutup fitur Beli Langsung di Booth bagi pembeli"
+          >
+            <span className={`w-2 h-2 rounded-full ${isBoothOpen ? 'bg-emerald-500' : 'bg-stone-400'}`} />
+            <span>{isBoothOpen ? '⚡ Booth: Buka' : 'Booth: Tutup (Khusus PO)'}</span>
+          </button>
+
           {/* QRIS Merchant Settings Button */}
           <button
             type="button"
@@ -228,8 +253,8 @@ export default function BaristaQueueView() {
         </div>
       </div>
 
-      {/* Modern Bento Stat Cards: Omzet, Rekap PO Senin, Rekap PO Selasa, & Menunggu */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Modern Bento Stat Cards: Omzet, Antrean Booth, Rekap PO Senin, & Rekap PO Selasa */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="col-span-2 p-4 sm:p-5 rounded-2xl bg-[#2C1810] text-white flex items-center justify-between gap-3">
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
@@ -268,6 +293,25 @@ export default function BaristaQueueView() {
 
         <button
           type="button"
+          onClick={() => setOrderTypeFilter(orderTypeFilter === 'regular' ? 'all' : 'regular')}
+          className={`p-4 rounded-2xl border text-left transition-all active:scale-[0.99] ${
+            orderTypeFilter === 'regular'
+              ? 'bg-emerald-700 text-white border-emerald-700'
+              : 'bg-white border-stone-200/90 hover:border-[#2C1810] text-[#2C1810]'
+          }`}
+        >
+          <span className={`text-[11px] font-bold uppercase tracking-wider block ${
+            orderTypeFilter === 'regular' ? 'text-emerald-100' : 'text-emerald-700'
+          }`}>
+            ⚡ Beli di Booth
+          </span>
+          <div className="font-fredoka text-xl sm:text-2xl font-bold mt-1">
+            {counts.regular} <span className="text-xs font-medium opacity-80">porsi</span>
+          </div>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setOrderTypeFilter(orderTypeFilter === 'po-senin' ? 'all' : 'po-senin')}
           className={`p-4 rounded-2xl border text-left transition-all active:scale-[0.99] ${
             orderTypeFilter === 'po-senin'
@@ -288,7 +332,7 @@ export default function BaristaQueueView() {
         <button
           type="button"
           onClick={() => setOrderTypeFilter(orderTypeFilter === 'po-selasa' ? 'all' : 'po-selasa')}
-          className={`p-4 rounded-2xl border text-left transition-all active:scale-[0.99] ${
+          className={`col-span-2 lg:col-span-1 p-4 rounded-2xl border text-left transition-all active:scale-[0.99] ${
             orderTypeFilter === 'po-selasa'
               ? 'bg-[#C83E4D] text-white border-[#C83E4D]'
               : 'bg-white border-stone-200/90 hover:border-[#2C1810] text-[#2C1810]'
@@ -305,7 +349,7 @@ export default function BaristaQueueView() {
         </button>
       </div>
 
-      {/* Combined Filter Bar: Status Tabs Left & PO Day Filter Right on Laptop */}
+      {/* Combined Filter Bar: Status Tabs Left & Type Filter Right on Laptop */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Status Filter Tabs */}
         <div className="flex items-center gap-1.5 p-1 bg-white rounded-2xl border border-stone-200/90 overflow-x-auto no-scrollbar">
@@ -337,11 +381,12 @@ export default function BaristaQueueView() {
           ))}
         </div>
 
-        {/* Order Day Filter: Semua, PO Senin, PO Selasa */}
+        {/* Order Type & Day Filter: Semua, Booth, PO Senin, PO Selasa */}
         <div className="flex items-center gap-1.5 text-xs overflow-x-auto no-scrollbar">
-          <span className="text-[11px] font-semibold text-stone-500 whitespace-nowrap mr-1">Filter Hari:</span>
+          <span className="text-[11px] font-semibold text-stone-500 whitespace-nowrap mr-1">Filter:</span>
           {[
             { key: 'all', label: `Semua (${counts.all})` },
+            { key: 'regular', label: `⚡ Booth (${counts.regular})` },
             { key: 'po-senin', label: `📅 Senin (${counts.poSenin})` },
             { key: 'po-selasa', label: `🗓️ Selasa (${counts.poSelasa})` },
           ].map(item => (
@@ -431,18 +476,32 @@ export default function BaristaQueueView() {
                   </div>
                 </div>
 
-                {/* Pre-Order Schedule Ribbon */}
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAF6F0] border border-stone-200/80 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span>🗓️</span>
-                    <span className="font-bold text-[#2C1810]">
-                      Penerimaan: {order.poSessionName || 'Senin / Selasa'}
+                {/* Order Type Ribbon: Beli Langsung di Booth OR Pre-Order Schedule */}
+                {order.orderType === 'po' ? (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAF6F0] border border-stone-200/80 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span>🗓️</span>
+                      <span className="font-bold text-[#2C1810]">
+                        Pre-Order: {order.poSessionName || 'Senin / Selasa'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-semibold text-stone-600 bg-white px-2 py-0.5 rounded border border-stone-200">
+                      Produksi Sabtu
                     </span>
                   </div>
-                  <span className="text-[10px] font-semibold text-stone-600 bg-white px-2 py-0.5 rounded border border-stone-200">
-                    Produksi Sabtu
-                  </span>
-                </div>
+                ) : (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span>⚡</span>
+                      <span className="font-bold text-emerald-950">
+                        Beli Langsung di Booth
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-semibold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200">
+                      Ambil Sekarang
+                    </span>
+                  </div>
+                )}
 
                 {/* Attached Payment Proof Card */}
                 {order.proofImageUrl && (

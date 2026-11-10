@@ -27,6 +27,7 @@ const STORAGE_KEY = 'scoopmatch_order_queue_v6';
 const DELETED_IDS_KEY = 'scoopmatch_deleted_order_ids_v2';
 const SOLD_OUT_FLAVORS_KEY = 'scoopmatch_sold_out_flavors_v2';
 const SOLD_OUT_TOPPINGS_KEY = 'scoopmatch_sold_out_toppings_v2';
+const PO_SETTINGS_STORAGE_KEY = 'scoopmatch_po_settings_v2';
 
 function getDeletedOrderIds() {
   try {
@@ -115,16 +116,21 @@ function mapSheetRowToOrder(row, existingOrder = null) {
     }
   }
 
+  const isRegular =
+    row.order_type === 'regular' ||
+    (row.order_code || '').toUpperCase().includes('BOOTH') ||
+    (!row.po_session_name && existingOrder?.orderType === 'regular');
+
   return {
     orderId: row.order_code,
     customerName: row.customer_name || 'Pelanggan',
     customerPhone: row.customer_phone || '',
     paymentMethod: row.payment_method || 'qris',
     paymentStatus: row.payment_status || 'unpaid',
-    orderType: 'po',
-    poSessionId: row.po_session_id || 'hari-senin',
-    poSessionName: row.po_session_name || 'Hari Senin',
-    poTimeRange: existingOrder?.poTimeRange || 'Pengambilan / Pengantaran',
+    orderType: isRegular ? 'regular' : 'po',
+    poSessionId: isRegular ? null : (row.po_session_id || 'hari-senin'),
+    poSessionName: isRegular ? '' : (row.po_session_name || 'Hari Senin'),
+    poTimeRange: isRegular ? '' : (existingOrder?.poTimeRange || 'Pengambilan / Pengantaran'),
     proofImageUrl: existingOrder?.proofImageUrl || null,
     notes: row.notes || '',
     flavor: matchedFlavor,
@@ -264,6 +270,10 @@ export function OrderProvider({ children }) {
       } else if (e.key === SOLD_OUT_TOPPINGS_KEY) {
         try {
           setSoldOutToppings(e.newValue ? JSON.parse(e.newValue) : []);
+        } catch {}
+      } else if (e.key === PO_SETTINGS_STORAGE_KEY) {
+        try {
+          setPoSettings(getPoSettings());
         } catch {}
       }
     };
