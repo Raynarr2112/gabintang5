@@ -125,6 +125,11 @@ function mapSheetRowToOrder(row, existingOrder = null) {
     (!row.po_session_name && existingOrder?.orderType === 'regular');
 
   const parsedSheetTime = row.time_str ? Date.parse(row.time_str) : NaN;
+  const rawSheetProof = typeof row.has_proof === 'string' ? row.has_proof.trim() : '';
+  const sheetProofImage =
+    rawSheetProof.startsWith('data:image/') || /^https?:\/\//i.test(rawSheetProof)
+      ? rawSheetProof
+      : null;
 
   return {
     orderId: row.order_code,
@@ -136,7 +141,8 @@ function mapSheetRowToOrder(row, existingOrder = null) {
     poSessionId: isRegular ? null : (row.po_session_id || 'hari-senin'),
     poSessionName: isRegular ? '' : (row.po_session_name || 'Hari Senin'),
     poTimeRange: isRegular ? '' : (existingOrder?.poTimeRange || 'Pengambilan / Pengantaran'),
-    proofImageUrl: existingOrder?.proofImageUrl || null,
+    proofImageUrl: sheetProofImage || existingOrder?.proofImageUrl || null,
+    hasProofFlag: Boolean(sheetProofImage || existingOrder?.proofImageUrl || rawSheetProof.toUpperCase() === 'YA'),
     notes: row.notes || '',
     flavor: matchedFlavor,
     secondFlavor: existingOrder?.secondFlavor || null,
@@ -670,12 +676,21 @@ export function OrderProvider({ children }) {
 
   const attachPaymentProof = (orderId, proofImageUrl) => {
     const currentOrd = orderQueue.find(o => o.orderId === orderId);
+    const proofPayload =
+      typeof proofImageUrl === 'string' &&
+      proofImageUrl.startsWith('data:image/') &&
+      proofImageUrl.length <= 48000
+        ? proofImageUrl
+        : proofImageUrl
+        ? 'YA'
+        : 'TIDAK';
+
     updateOrderStatusInGoogleSheets({
       orderCode: orderId,
       status: currentOrd?.status || 'pending',
       paymentStatus: currentOrd?.paymentStatus || 'unpaid',
       paymentMethod: currentOrd?.paymentMethod || 'qris',
-      hasProof: proofImageUrl ? 'YA' : 'TIDAK',
+      hasProof: proofPayload,
     });
 
     setOrderQueue(prev =>

@@ -63,6 +63,15 @@ export function formatOrderForExport(order) {
     })
     .join(', ') || '-';
 
+  const proofPayload =
+    typeof order.proofImageUrl === 'string' &&
+    order.proofImageUrl.startsWith('data:image/') &&
+    order.proofImageUrl.length <= 48000
+      ? order.proofImageUrl
+      : order.proofImageUrl
+      ? 'YA'
+      : 'TIDAK';
+
   return {
     order_code: order.orderId,
     customer_name: order.customerName,
@@ -72,7 +81,7 @@ export function formatOrderForExport(order) {
     po_time_range: order.poTimeRange || '',
     payment_method: order.paymentMethod || 'qris',
     payment_status: order.paymentStatus || 'unpaid',
-    has_proof: order.proofImageUrl ? 'YA' : 'TIDAK',
+    has_proof: proofPayload,
     notes: order.notes || '',
     flavor_id: order.flavor?.id || '',
     flavor_name: order.secondFlavor

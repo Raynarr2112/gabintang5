@@ -548,6 +548,15 @@ export default function BaristaQueueView() {
                   </div>
                 )}
 
+                {!order.proofImageUrl && order.hasProofFlag && (
+                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between gap-2 text-[11px] text-amber-900">
+                    <div className="flex items-center gap-1.5 font-semibold">
+                      <Camera className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>Pembeli melampirkan bukti (pesanan lama — cek via WhatsApp)</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Customer name and ordered item */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
