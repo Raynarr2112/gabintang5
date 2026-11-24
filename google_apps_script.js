@@ -199,34 +199,42 @@ function doPost(e) {
       return jsonResponse({ status: "not_found", action: "delete_order" });
     }
 
-    // 6B. Jika pesanan sudah ada di baris sebelumnya -> Update statusnya saja tanpa membuat baris ganda
-    if (existingRow > 0) {
-      if (colMap.orderStatus && data.status) {
-        sheet.getRange(existingRow, colMap.orderStatus).setValue(cleanOrderStatus);
-      }
-      if (colMap.paymentStatus && data.payment_status) {
-        sheet.getRange(existingRow, colMap.paymentStatus).setValue(cleanPayStatus);
-      }
-      if (colMap.paymentMethod && data.payment_method) {
-        sheet.getRange(existingRow, colMap.paymentMethod).setValue(cleanPayMethod);
-      }
-      if (colMap.hasProof && data.has_proof) {
-        sheet.getRange(existingRow, colMap.hasProof).setValue(data.has_proof);
-      }
-
-      return jsonResponse({
-        status: "success",
-        action: "updated",
-        row: existingRow
-      });
-    }
-
-    // 6C. Jika hanya request update_status tapi nomor antrean belum ditemukan, jangan buat baris kosong
+    // 6B. Jika aksi adalah update_status -> Update status baris yang sudah ada
     if (data.action === "update_status") {
+      if (existingRow > 0) {
+        if (colMap.orderStatus && data.status) {
+          sheet.getRange(existingRow, colMap.orderStatus).setValue(cleanOrderStatus);
+        }
+        if (colMap.paymentStatus && data.payment_status) {
+          sheet.getRange(existingRow, colMap.paymentStatus).setValue(cleanPayStatus);
+        }
+        if (colMap.paymentMethod && data.payment_method) {
+          sheet.getRange(existingRow, colMap.paymentMethod).setValue(cleanPayMethod);
+        }
+        if (colMap.hasProof && data.has_proof) {
+          sheet.getRange(existingRow, colMap.hasProof).setValue(data.has_proof);
+        }
+
+        return jsonResponse({
+          status: "success",
+          action: "updated",
+          row: existingRow
+        });
+      }
+
+      // Jika request update_status tapi nomor antrean belum ditemukan, jangan buat baris kosong
       return jsonResponse({
         status: "skipped",
         message: "Order code tidak ditemukan untuk update status"
       });
+    }
+
+    // 6C. Jika pesanan baru kebetulan membawa order_code yang sudah ada (mis. dari cache browser lama),
+    // JANGAN timpa pesanan sebelumnya — buat kode unik baru agar tetap tercatat sebagai baris baru!
+    var finalOrderCode = (data.order_code || "-").toString().trim();
+    if (existingRow > 0 && finalOrderCode !== "__SYSTEM_CONFIG__") {
+      var suffix = Math.floor(100 + Math.random() * 900).toString();
+      finalOrderCode = finalOrderCode + "-" + suffix;
     }
 
     // 7. SIMPAN DATA PEMBELI BARU: Susun baris sesuai urutan kolom di sheet
@@ -246,7 +254,7 @@ function doPost(e) {
     var safePhone = data.customer_phone ? "'" + data.customer_phone.toString().trim() : "-";
 
     if (colMap.time) newRow[colMap.time - 1] = formattedDate;
-    if (colMap.orderCode) newRow[colMap.orderCode - 1] = data.order_code || "-";
+    if (colMap.orderCode) newRow[colMap.orderCode - 1] = finalOrderCode;
     if (colMap.name) newRow[colMap.name - 1] = data.customer_name || "Pelanggan";
     if (colMap.phone) newRow[colMap.phone - 1] = safePhone;
     if (colMap.orderType) newRow[colMap.orderType - 1] = cleanOrderType;

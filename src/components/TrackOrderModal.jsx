@@ -25,9 +25,10 @@ export default function TrackOrderModal({ isOpen, onClose }) {
       const rawNumber = normalizedId.replace(/\D/g, '');
       const queryNumber = cleanQuery.replace(/\D/g, '');
 
-      // Match #SCOOP-XXX or partial number (e.g. 108)
+      // Match #SCOOP-XXXXX or partial code (e.g. 7K4M9 / 108)
       if (normalizedId === cleanQuery || normalizedId === `#${cleanQuery}`) return true;
-      if (queryNumber && (rawNumber === queryNumber || normalizedId.endsWith(cleanQuery))) return true;
+      if (cleanQuery.length >= 3 && normalizedId.endsWith(cleanQuery)) return true;
+      if (queryNumber && rawNumber === queryNumber) return true;
 
       // Match WhatsApp Phone
       if (order.customerPhone) {

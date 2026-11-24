@@ -8,31 +8,38 @@ export function formatRupiah(amount) {
   }).format(amount).replace('IDR', 'Rp');
 }
 
-const COUNTER_KEY = 'scoopmatch_order_counter_v2';
+const ORDER_ID_CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 
-// Generate unique sequential order ID like #SCOOP-001 (resets daily)
-export function generateOrderId() {
-  try {
-    const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const raw = localStorage.getItem(COUNTER_KEY);
-    let state = { date: todayStr, count: 0 };
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed.date === todayStr && typeof parsed.count === 'number') {
-          state = parsed;
-        }
-      } catch {
-        // silent fallback
-      }
+function randomOrderSuffix(length = 5) {
+  let result = '';
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(length);
+    crypto.getRandomValues(bytes);
+    for (let i = 0; i < length; i += 1) {
+      result += ORDER_ID_CHARS[bytes[i] % ORDER_ID_CHARS.length];
     }
-    state.count += 1;
-    localStorage.setItem(COUNTER_KEY, JSON.stringify(state));
-    return `#SCOOP-${String(state.count).padStart(3, '0')}`;
-  } catch {
-    const fallbackNum = Math.floor(100 + Math.random() * 900);
-    return `#SCOOP-${fallbackNum}`;
+    return result;
   }
+  for (let i = 0; i < length; i += 1) {
+    result += ORDER_ID_CHARS[Math.floor(Math.random() * ORDER_ID_CHARS.length)];
+  }
+  return result;
+}
+
+// Generate globally unique order ID like #SCOOP-7K4M9 (collision-safe across devices & days)
+export function generateOrderId(existingOrderIds = []) {
+  const existingSet = new Set(
+    (existingOrderIds || []).map(id => String(id || '').trim().toUpperCase())
+  );
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const candidate = `#SCOOP-${randomOrderSuffix(5)}`;
+    if (!existingSet.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  return `#SCOOP-${Date.now().toString(36).slice(-5).toUpperCase()}`;
 }
 
 // Format timestamp to localized readable string

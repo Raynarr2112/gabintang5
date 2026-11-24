@@ -92,7 +92,10 @@ export async function sendOrderToGoogleSheets(order) {
   const webhookUrl = getGoogleSheetsWebhookUrl();
   if (!webhookUrl) return false;
 
-  const payload = formatOrderForExport(order);
+  const payload = {
+    action: 'create_order',
+    ...formatOrderForExport(order),
+  };
 
   try {
     // Mode no-cors avoids CORS restriction on Google Apps Script redirects

@@ -124,6 +124,8 @@ function mapSheetRowToOrder(row, existingOrder = null) {
     (row.order_code || '').toUpperCase().includes('BOOTH') ||
     (!row.po_session_name && existingOrder?.orderType === 'regular');
 
+  const parsedSheetTime = row.time_str ? Date.parse(row.time_str) : NaN;
+
   return {
     orderId: row.order_code,
     customerName: row.customer_name || 'Pelanggan',
@@ -142,7 +144,7 @@ function mapSheetRowToOrder(row, existingOrder = null) {
     size: 'single',
     toppings: parsedToppings,
     totalPrice: Number(row.total_price) || 9000,
-    timestamp: existingOrder?.timestamp || Date.now(),
+    timestamp: existingOrder?.timestamp || (!Number.isNaN(parsedSheetTime) ? parsedSheetTime : Date.now()),
     status: row.status || 'pending',
   };
 }
@@ -444,12 +446,12 @@ export function OrderProvider({ children }) {
           return mapSheetRowToOrder(row, existing);
         });
 
-        // Preserve any very recent local orders (< 15s old) that haven't finished writing to Sheets yet
+        // Preserve any very recent local orders (< 60s old) that haven't finished writing to Sheets yet
         const now = Date.now();
         const recentLocalOnly = prev.filter(
           localOrd =>
             !merged.some(m => m.orderId === localOrd.orderId) &&
-            now - (localOrd.timestamp || 0) < 15000
+            now - (localOrd.timestamp || 0) < 60000
         );
 
         const nextList = [...recentLocalOnly, ...merged];
@@ -541,7 +543,7 @@ export function OrderProvider({ children }) {
     proofImageUrl = null,
   }) => {
     const newOrder = {
-      orderId: generateOrderId(),
+      orderId: generateOrderId(orderQueue.map(o => o.orderId)),
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
       paymentMethod,
