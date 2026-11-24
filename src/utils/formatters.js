@@ -8,38 +8,25 @@ export function formatRupiah(amount) {
   }).format(amount).replace('IDR', 'Rp');
 }
 
-const ORDER_ID_CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-
-function randomOrderSuffix(length = 5) {
-  let result = '';
-  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
-    const bytes = new Uint8Array(length);
-    crypto.getRandomValues(bytes);
-    for (let i = 0; i < length; i += 1) {
-      result += ORDER_ID_CHARS[bytes[i] % ORDER_ID_CHARS.length];
-    }
-    return result;
-  }
-  for (let i = 0; i < length; i += 1) {
-    result += ORDER_ID_CHARS[Math.floor(Math.random() * ORDER_ID_CHARS.length)];
-  }
-  return result;
+// Extract numeric sequence from order IDs like #SCOOP-001, #SCOOP-012, or #SCOOP-002-319
+function extractOrderNumber(orderId) {
+  const match = String(orderId || '').trim().toUpperCase().match(/^#?SCOOP-(\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
 }
 
-// Generate globally unique order ID like #SCOOP-7K4M9 (collision-safe across devices & days)
+// Generate clean sequential order ID like #SCOOP-001, #SCOOP-002, ...
+// Always picks max(existingQueueNumbers) + 1 so multiple devices stay in sync without overwriting
 export function generateOrderId(existingOrderIds = []) {
-  const existingSet = new Set(
-    (existingOrderIds || []).map(id => String(id || '').trim().toUpperCase())
-  );
-
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    const candidate = `#SCOOP-${randomOrderSuffix(5)}`;
-    if (!existingSet.has(candidate)) {
-      return candidate;
+  let maxNum = 0;
+  for (const id of existingOrderIds || []) {
+    const num = extractOrderNumber(id);
+    if (num > maxNum) {
+      maxNum = num;
     }
   }
 
-  return `#SCOOP-${Date.now().toString(36).slice(-5).toUpperCase()}`;
+  const nextNum = maxNum + 1;
+  return `#SCOOP-${String(nextNum).padStart(3, '0')}`;
 }
 
 // Format timestamp to localized readable string

@@ -229,12 +229,11 @@ function doPost(e) {
       });
     }
 
-    // 6C. Jika pesanan baru kebetulan membawa order_code yang sudah ada (mis. dari cache browser lama),
-    // JANGAN timpa pesanan sebelumnya — buat kode unik baru agar tetap tercatat sebagai baris baru!
+    // 6C. Jika pesanan baru kebetulan membawa order_code yang sudah ada (mis. 2 pembeli klik pesan di detik yang sama),
+    // JANGAN timpa pesanan sebelumnya — otomatis naikkan ke nomor urut berikutnya (#SCOOP-001, #SCOOP-002, dst)!
     var finalOrderCode = (data.order_code || "-").toString().trim();
     if (existingRow > 0 && finalOrderCode !== "__SYSTEM_CONFIG__") {
-      var suffix = Math.floor(100 + Math.random() * 900).toString();
-      finalOrderCode = finalOrderCode + "-" + suffix;
+      finalOrderCode = getNextSequentialOrderCode(sheet, lastRow, colMap.orderCode);
     }
 
     // 7. SIMPAN DATA PEMBELI BARU: Susun baris sesuai urutan kolom di sheet
@@ -373,6 +372,29 @@ function findRowByOrderCode(sheet, lastRow, orderCodeCol, orderCode) {
     }
   }
   return -1;
+}
+
+/**
+ * Menghasilkan nomor antrean urut berikutnya (#SCOOP-001, #SCOOP-002, dst) berdasarkan nomor tertinggi di Sheet
+ */
+function getNextSequentialOrderCode(sheet, lastRow, orderCodeCol) {
+  var maxNum = 0;
+  if (lastRow > 1 && orderCodeCol) {
+    var codes = sheet.getRange(2, orderCodeCol, lastRow - 1, 1).getValues();
+    for (var r = 0; r < codes.length; r++) {
+      var val = codes[r][0] ? codes[r][0].toString().trim().toUpperCase() : "";
+      var match = val.match(/^#?SCOOP-(\d+)/);
+      if (match) {
+        var n = parseInt(match[1], 10);
+        if (n > maxNum) maxNum = n;
+      }
+    }
+  }
+  var nextStr = (maxNum + 1).toString();
+  while (nextStr.length < 3) {
+    nextStr = "0" + nextStr;
+  }
+  return "#SCOOP-" + nextStr;
 }
 
 /**
